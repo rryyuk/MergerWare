@@ -1,37 +1,35 @@
-meteor create loan-app
-cd loan-app
+import { Meteor } from 'meteor/meteor';
+import { Mongo } from 'meteor/mongo';
+import { Accounts } from 'meteor/accounts-base';
+import SimpleSchema from 'simpl-schema';
+import { Roles } from 'meteor/alanning:roles';
 
-meteor add accounts-ui
-meteor add accounts-password
-meteor add alanning:roles
-meteor add react
-meteor add react-helmet
-
-const UserModel = {
+const UserModel = new SimpleSchema({
   name: String,
   email: { type: String, regEx: SimpleSchema.RegEx.Email },
-  roles: { type: Array, default: [] },
+  roles: { type: Array, defaultValue: [] },
   'roles.$': String,
-  loans: { type: Array, default: [] },
+  loans: { type: Array, defaultValue: [] },
   'loans.$': {
-    type: ObjectId,
-    ref: 'Loan',
+    type: SimpleSchema.RegEx.Id,
+    regEx: SimpleSchema.RegEx.Id,
+    optional: true,
   },
-};
+});
 
-const LoanModel = {
-  borrower: { type: ObjectId, ref: 'User' },
-  lender: { type: ObjectId, ref: 'User' },
+const LoanModel = new SimpleSchema({
+  borrower: { type: SimpleSchema.RegEx.Id, regEx: SimpleSchema.RegEx.Id, optional: true },
+  lender: { type: SimpleSchema.RegEx.Id, regEx: SimpleSchema.RegEx.Id, optional: true },
   amount: Number,
   status: { type: String, allowedValues: ['pending', 'approved', 'rejected', 'paid'] },
-  createdAt: { type: Date, default: new Date() },
-};
+  createdAt: { type: Date, defaultValue: new Date() },
+});
 
-Users = new Mongo.Collection('users');
-Loans = new Mongo.Collection('loans');
+const Users = new Mongo.Collection('users');
+const Loans = new Mongo.Collection('loans');
 
-Users.attachSchema(new SimpleSchema(UserModel));
-Loans.attachSchema(new SimpleSchema(LoanModel));
+Users.attachSchema(UserModel);
+Loans.attachSchema(LoanModel);
 
 if (Meteor.isServer) {
   Meteor.publish('users', function () {
@@ -53,9 +51,7 @@ Meteor.methods({
 Meteor.methods({
   'loans.request': function (loan) {
     const loanId = Loans.insert(loan);
-    const user = Users.findOne({ _id: loan.borrower });
-    user.loans.push(loanId);
-    Users.update({ _id: user._id }, { $set: { loans: user.loans } });
+    Users.update({ _id: loan.borrower }, { $push: { loans: loanId } });
   },
 });
 
